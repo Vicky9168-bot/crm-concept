@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CRM 教學 Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mute:#6b7685;--line:#e3e7ee;--acc:#1f4e79;--acc2:#c0392b;--ok:#2e7d32}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--card:#1b222b;--ink:#e8edf3;--mute:#98a3b3;--line:#2b3542;--acc:#6aa9e0;--acc2:#ef7b6e;--ok:#6fcf74}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+header{padding:16px;border-bottom:1px solid var(--line);background:var(--card);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{font-size:18px;margin:0}
+.note{color:var(--mute);font-size:12px}
+select,button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:12px 16px}
+nav button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+main{padding:0 16px 32px;max-width:1200px;margin:auto}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi b{display:block;font-size:22px}
+.kpi span{color:var(--mute);font-size:12px}
+.two{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+h2{font-size:15px;margin:0 0 8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+.tip{background:var(--bg);border-left:3px solid var(--acc);padding:8px 10px;margin-top:8px;font-size:13px}
+canvas{max-height:300px}
+.hm td{text-align:center;font-size:11px;padding:4px}
+.sec{display:none}.sec.on{display:block}
+label{font-size:13px;margin-right:12px}
+input[type=range]{vertical-align:middle}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>CRM 教學 Dashboard</h1><div class="note">全部為模擬資料，僅供教學。快照日：<span id="snap"></span></div></div>
+  <div><label>品牌類型 <select id="brand"></select></label>
+  <label>通路 <select id="chan"></select></label></div>
+</header>
+<nav id="tabs"></nav>
+<main>
+<section class="sec" id="t-overview"></section>
+<section class="sec" id="t-lifecycle"></section>
+<section class="sec" id="t-segment"></section>
+<section class="sec" id="t-cohort"></section>
+<section class="sec" id="t-tier"></section>
+<section class="sec" id="t-cat"></section>
+</main>
+<script>
+const DATA = /*__DATA__*/null;
+const TABS=[["overview","總覽 KPI"],["lifecycle","新客 / 舊客 / 沉睡客"],["segment","RFM 分群與推播"],["cohort","留存 Cohort"],["tier","會員等級模擬"],["cat","品類回購"]];
+const PLAYBOOK={
+ "Champions":"VIP 專屬活動、新品搶先、邀請推薦（宣傳力道）。避免折扣轟炸，重體驗。",
+ "Loyal":"升等提醒、加購組合、點數加倍日，拉高客單。",
+ "New / Promising":"第二次購買引導：7–14 天內回購券、搭配商品推薦。",
+ "Need Attention":"限時提醒、補貨提醒、App 推播。",
+ "At Risk (VIP)":"高價值卻久未回訪：專人聯繫、專屬回饋券，優先挽回。",
+ "Hibernating":"喚醒流程：品牌新聞＋小額誘因，兩次無回應就降頻。",
+ "Lost":"低成本 Email 最後一搏，之後改為抑制名單。",
+ "Prospect":"註冊未購：首購禮。"};
+const $=s=>document.querySelector(s);
+const fmt=n=>Math.round(n).toLocaleString();
+let charts={};
+function chart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg)}
+function brand(){return DATA.brands[$('#brand').value]}
+function rows(){const c=$('#chan').value;return brand().customers.filter(r=>c==='ALL'||r.channel===c)}
+function group(rs,key){const m={};rs.forEach(r=>{(m[r[key]]=m[r[key]]||[]).push(r)});return m}
+const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
+
+function overview(){
+ const rs=rows().filter(r=>r.frequency>0),b=brand();
+ const rev=sum(rs,r=>r.monetary),ord=sum(rs,r=>r.frequency);
+ const rep=rs.filter(r=>r.frequency>=2).length/rs.length*100;
+ const act=rs.filter(r=>r.recency<=180).length/rs.length*100;
+ const m=b.monthly;
+ $('#t-overview').innerHTML=`<div class="grid">
+ <div class="card kpi"><b>${fmt(rs.length)}</b><span>購買會員數</span></div>
+ <div class="card kpi"><b>${b.currency}${fmt(rev)}</b><span>累計營收</span></div>
+ <div class="card kpi"><b>${b.currency}${fmt(rev/ord)}</b><span>平均客單 AOV</span></div>
+ <div class="card kpi"><b>${(ord/rs.length).toFixed(2)}</b><span>人均購買次數</span></div>
+ <div class="card kpi"><b>${rep.toFixed(1)}%</b><span>回購率（≥2 次）</span></div>
+ <div class="card kpi"><b>${act.toFixed(1)}%</b><span>180 天活躍率</span></div></div>
+ <div class="two"><div class="card"><h2>月營收與客單</h2><canvas id="c1"></canvas></div>
+ <div class="card"><h2>新客 vs 回購客（每月購買人數）</h2><canvas id="c2"></canvas></div></div>
+ <div class="tip">教學重點：營收成長要拆成「新客數 × 客單」與「舊客回購」兩條線看，單看總營收會看不出健康度。通路篩選只影響上方 KPI，月趨勢為全會員。</div>`;
+ const labels=m.map(x=>x.m);
+ chart('c1',{data:{labels,datasets:[{type:'bar',label:'營收',data:m.map(x=>x.revenue),backgroundColor:'#1f4e7988',yAxisID:'y'},{type:'line',label:'AOV',data:m.map(x=>x.aov),borderColor:'#c0392b',yAxisID:'y1'}]},options:{scales:{y:{position:'left'},y1:{position:'right',grid:{drawOnChartArea:false}}}}});
+ chart('c2',{type:'bar',data:{labels,datasets:[{label:'新客',data:m.map(x=>x.new_buyers),backgroundColor:'#2e7d32aa'},{label:'回購客',data:m.map(x=>x.repeat_buyers),backgroundColor:'#1f4e79aa'}]},options:{scales:{x:{stacked:true},y:{stacked:true}}}});
+}
+
+function lifecycle(){
+ const rs=rows(),g=group(rs,'lifecycle');
+ const order=["New (1st order, <=90d)","Active","At risk (91-180d)","Dormant (181-365d)","Lost (>365d)"];
+ const help={"New (1st order, <=90d)":"新客：90 天內首購且僅 1 單 → 追蹤第二購轉換率","Active":"活躍：90 天內有購買 → 追蹤購買頻率、AOV","At risk (91-180d)":"預警：91–180 天未購 → 觸發喚醒","Dormant (181-365d)":"沉睡：181–365 天 → 召回活動","Lost (>365d)":"流失：>365 天 → 抑制名單/低成本觸及"};
+ $('#t-lifecycle').innerHTML=`<div class="two"><div class="card"><h2>會員生命週期分布</h2><canvas id="c3"></canvas></div>
+ <div class="card"><h2>各階段指標</h2><table><tr><th>階段</th><th>人數</th><th>佔比</th><th>平均消費</th><th>平均購買次數</th></tr>
+ ${order.map(k=>{const a=g[k]||[];return `<tr><td>${k}</td><td>${a.length}</td><td>${(a.length/rs.length*100).toFixed(1)}%</td><td>${a.length?fmt(sum(a,r=>r.monetary)/a.length):'-'}</td><td>${a.length?(sum(a,r=>r.frequency)/a.length).toFixed(2):'-'}</td></tr>`}).join('')}</table></div></div>
+ <div class="card" style="margin-top:12px"><h2>如何判斷 CRM 有在運作？</h2><ul>${order.map(k=>`<li>${help[k]}</li>`).join('')}</ul>
+ <div class="tip">看「預警 → 活躍」與「沉睡 → 活躍」的月度轉移人數，才是喚醒活動是否有效的證據。本 dashboard 只有單一快照，真實專案要每月存一份快照做比較。</div></div>`;
+ chart('c3',{type:'doughnut',data:{labels:order,datasets:[{data:order.map(k=>(g[k]||[]).length),backgroundColor:['#2e7d32','#1f4e79','#f0a500','#c0392b','#7f8c8d']}]}});
+}
+
+function segment(){
+ const rs=rows().filter(r=>r.frequency>0),g=group(rs,'segment'),tot=sum(rs,r=>r.monetary);
+ const names=Object.keys(g).sort((a,b)=>sum(g[b],r=>r.monetary)-sum(g[a],r=>r.monetary));
+ $('#t-segment').innerHTML=`<div class="two"><div class="card"><h2>各分群人數與營收貢獻</h2><canvas id="c4"></canvas></div>
+ <div class="card"><h2>分群明細（點擊列看推播建議）</h2><table id="segtab"><tr><th>分群</th><th>人數</th><th>營收佔比</th><th>AOV</th><th>R 天</th></tr>
+ ${names.map(n=>{const a=g[n];return `<tr data-n="${n}" style="cursor:pointer"><td>${n}</td><td>${a.length}</td><td>${(sum(a,r=>r.monetary)/tot*100).toFixed(1)}%</td><td>${fmt(sum(a,r=>r.monetary)/sum(a,r=>r.frequency))}</td><td>${fmt(sum(a,r=>r.recency)/a.length)}</td></tr>`}).join('')}</table>
+ <div class="tip" id="play">點選左側任一分群，查看客製化推播建議。</div></div></div>
+ <div class="tip">RFM：R=最近一次購買距今、F=購買次數、M=累計金額，各依五等分（5 最佳）。觀察重點：Champions 人數少但營收佔比高，At Risk (VIP) 是最值得優先挽回的族群。</div>`;
+ chart('c4',{type:'bar',data:{labels:names,datasets:[{label:'人數',data:names.map(n=>g[n].length),backgroundColor:'#1f4e79aa'},{label:'營收佔比 %',data:names.map(n=>+(sum(g[n],r=>r.monetary)/tot*100).toFixed(1)),backgroundColor:'#c0392baa'}]},options:{indexAxis:'y'}});
+ document.querySelectorAll('#segtab tr[data-n]').forEach(tr=>tr.onclick=()=>{$('#play').innerHTML='<b>'+tr.dataset.n+'</b>：'+(PLAYBOOK[tr.dataset.n]||'')});
+}
+
+function cohort(){
+ const c=brand().cohort,keys=Object.keys(c).sort();
+ const col=v=>v==null?'transparent':`rgba(31,78,121,${Math.min(1,v/70)})`;
+ $('#t-cohort').innerHTML=`<div class="card"><h2>月度首購 Cohort 留存率（%）</h2><div style="overflow:auto"><table class="hm"><tr><th>首購月</th><th>人數</th>${[...Array(13).keys()].map(i=>`<th>M${i}</th>`).join('')}</tr>
+ ${keys.map(k=>`<tr><td>${k}</td><td>${c[k].size}</td>${c[k].ret.map(v=>`<td style="background:${col(v)};color:${v>35?'#fff':'inherit'}">${v==null?'':v}</td>`).join('')}</tr>`).join('')}</table></div>
+ <div class="tip">讀法：橫向看同一批人隨時間的回購比例；縱向比較不同月份進來的客人品質。M0 恆為 100%。每個格子是「該月有購買的人 ÷ 首購人數」，所以不同品類的自然回購週期（美妝 vs 家居）會讓曲線形狀不同。</div></div>`;
+}
+
+function tier(){
+ const b=brand(),rs=rows().filter(r=>r.frequency>0);
+ const maxT=b.tiers[b.tiers.length-1].min;
+ $('#t-tier').innerHTML=`<div class="card"><h2>會員等級模擬器</h2>
+ <label>最高等級門檻：<b id="thv">${maxT}</b> <input id="th" type="range" min="1000" max="${maxT*3}" step="500" value="${maxT}"></label>
+ <label>升級後 AOV 提升 <b id="upv">10</b>% <input id="up" type="range" min="0" max="30" value="10"></label>
+ <div id="tout" style="margin-top:10px"></div>
+ <div class="tip">這是教學用的簡化模型：門檻調低 → 更多人升級、成本（回饋）增加；調高 → 激勵更強但可達性下降。實務上要搭配「距離升級還差多少」的推播，並用 A/B 測試驗證 AOV 提升幅度，而不是直接相信這裡的假設。</div></div>
+ <div class="card" style="margin-top:12px"><h2>實際等級現況</h2><canvas id="c5"></canvas></div>`;
+ const run=()=>{
+  const th=+$('#th').value,up=+$('#up').value/100;$('#thv').textContent=th;$('#upv').textContent=Math.round(up*100);
+  const near=rs.filter(r=>r.monetary>=th*0.7&&r.monetary<th),reach=rs.filter(r=>r.monetary>=th);
+  const lift=sum(near,r=>r.aov)*up;
+  $('#tout').innerHTML=`<table><tr><th>指標</th><th>數值</th></tr>
+  <tr><td>已達門檻會員</td><td>${reach.length}（${(reach.length/rs.length*100).toFixed(1)}%）</td></tr>
+  <tr><td>距門檻 30% 內的「差一點」會員</td><td>${near.length}</td></tr>
+  <tr><td>推動「差一點」會員多買一單的潛在增量</td><td>${b.currency}${fmt(lift)}</td></tr></table>`;
+ };
+ $('#th').oninput=run;$('#up').oninput=run;run();
+ const g=group(rows(),'tier');
+ chart('c5',{type:'bar',data:{labels:b.tiers.map(t=>t.name),datasets:[{label:'人數',data:b.tiers.map(t=>(g[t.name]||[]).length),backgroundColor:'#1f4e79aa'}]}});
+}
+
+function cat(){
+ const cs=brand().categories;
+ $('#t-cat').innerHTML=`<div class="two"><div class="card"><h2>品類回購率 vs 客單</h2><canvas id="c6"></canvas></div>
+ <div class="card"><h2>品類表</h2><table><tr><th>品類</th><th>營收</th><th>訂單</th><th>AOV</th><th>回購率%</th></tr>
+ ${cs.map(c=>`<tr><td>${c.category}</td><td>${fmt(c.revenue)}</td><td>${fmt(c.orders)}</td><td>${fmt(c.aov)}</td><td>${c.repeat_rate}</td></tr>`).join('')}</table></div></div>
+ <div class="tip">「高回購率品類」適合當新客引流與二購推薦；「高客單品類」適合升級與 VIP 行銷。兩者交集就是主打商品。模擬資料的品類為隨機抽樣，真實資料請改用交易明細做 basket analysis。</div>`;
+ chart('c6',{type:'bubble',data:{datasets:cs.map((c,i)=>({label:c.category,data:[{x:c.repeat_rate,y:c.aov,r:Math.max(5,Math.sqrt(c.revenue)/40)}],backgroundColor:`hsla(${i*55},60%,50%,.6)`}))},options:{scales:{x:{title:{display:true,text:'回購率 %'}},y:{title:{display:true,text:'AOV'}}}}});
+}
+
+const RENDER={overview,lifecycle,segment,cohort,tier,cat};
+function show(id){document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.id==='t-'+id));
+ document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===id));RENDER[id]();window._tab=id}
+function init(){
+ $('#snap').textContent=DATA.snapshot;
+ $('#brand').innerHTML=Object.entries(DATA.brands).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+ $('#chan').innerHTML='<option value="ALL">全部</option>'+['App','Store','Web'].map(c=>`<option>${c}</option>`).join('');
+ $('#tabs').innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join('');
+ document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+ $('#brand').onchange=$('#chan').onchange=()=>show(window._tab);
+ show('overview');
+}
+init();
+</script>
+</body>
+</html>

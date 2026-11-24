@@ -1,0 +1,51 @@
+{
+  "apparel": {
+    "label": "服飾快時尚型（UNIQLO 風格）",
+    "style": "apparel",
+    "currency": "NT$",
+    "customers": 1800,
+    "base_gap_days": 75,
+    "aov_median": 1500,
+    "aov_floor": 300,
+    "first_order_factor": 0.85,
+    "channels": {"App": 0.45, "Store": 0.35, "Web": 0.20},
+    "categories": {"Outerwear": 0.18, "Tops": 0.34, "Bottoms": 0.20, "Innerwear": 0.20, "Accessories": 0.08},
+    "tiers": [
+      {"name": "Member", "min": 0},
+      {"name": "Silver", "min": 3000},
+      {"name": "Gold", "min": 8000}
+    ]
+  },
+  "drugstore": {
+    "label": "美妝生活通路型（寶雅 風格）",
+    "style": "drugstore",
+    "currency": "NT$",
+    "customers": 2000,
+    "base_gap_days": 38,
+    "aov_median": 650,
+    "aov_floor": 80,
+    "first_order_factor": 0.9,
+    "channels": {"Store": 0.7, "App": 0.25, "Web": 0.05},
+    "categories": {"Skincare": 0.25, "Makeup": 0.20, "Personal care": 0.25, "Household": 0.20, "Hair": 0.10},
+    "tiers": [
+      {"name": "普卡", "min": 0},
+      {"name": "金卡", "min": 10000}
+    ]
+  },
+  "lifestyle": {
+    "label": "居家生活型（MUJI 風格）",
+    "style": "lifestyle",
+    "currency": "NT$",
+    "customers": 1500,
+    "base_gap_days": 95,
+    "aov_median": 1100,
+    "aov_floor": 150,
+    "first_order_factor": 0.9,
+    "channels": {"Store": 0.55, "App": 0.30, "Web": 0.15},
+    "categories": {"Apparel": 0.22, "Food": 0.20, "Storage": 0.18, "Stationery": 0.18, "Furniture": 0.07, "Skincare": 0.15},
+    "tiers": [
+      {"name": "Member", "min": 0},
+      {"name": "Plus", "min": 6000}
+    ]
+  }
+}
